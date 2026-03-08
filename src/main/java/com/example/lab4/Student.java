@@ -1,7 +1,9 @@
+// Student.java (обновлённый)
 package com.example.lab4;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "students")
@@ -22,4 +24,12 @@ public class Student {
     private String email;
 
     private Integer age;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 }
