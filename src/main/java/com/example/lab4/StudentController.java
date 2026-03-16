@@ -26,7 +26,7 @@ public class StudentController {
         return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
-    // Заменили на пагинированный вариант
+
     @GetMapping
     public ResponseEntity<Page<StudentResponseDTO>> findAllPaginated(
             @RequestParam(defaultValue = "0") int page,
