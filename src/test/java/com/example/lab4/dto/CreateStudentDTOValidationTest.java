@@ -1,9 +1,13 @@
-package com.example.lab4.auth;
+package com.example.lab4.dto;     // ← Важно! Тот же пакет, что и DTO
 
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -13,41 +17,51 @@ class CreateStudentDTOValidationTest {
 
     @BeforeEach
     void setUp() {
-        validator = Validation.buildDefaultValidatorFactory().getValidator();
+        ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        validator = factory.getValidator();
     }
 
     @Test
-    void validDTOShouldPass() {
-        CreateStudentDTO dto = createValid();
-        assertTrue(validator.validate(dto).isEmpty());
+    void shouldPassWithValidData() {
+        CreateStudentDTO dto = createValidDTO();
+
+        Set<ConstraintViolation<CreateStudentDTO>> violations = validator.validate(dto);
+
+        assertTrue(violations.isEmpty(), "Должен проходить с корректными данными");
     }
 
     @Test
-    void blankFirstNameShouldFail() {
-        CreateStudentDTO dto = createValid();
+    void shouldFailWhenFirstNameIsBlank() {
+        CreateStudentDTO dto = createValidDTO();
         dto.setFirstName("");
-        assertFalse(validator.validate(dto).isEmpty());
+
+        Set<ConstraintViolation<CreateStudentDTO>> violations = validator.validate(dto);
+        assertFalse(violations.isEmpty());
     }
 
     @Test
-    void invalidEmailShouldFail() {
-        CreateStudentDTO dto = createValid();
-        dto.setEmail("bad-email");
-        assertFalse(validator.validate(dto).isEmpty());
+    void shouldFailWhenEmailIsInvalid() {
+        CreateStudentDTO dto = createValidDTO();
+        dto.setEmail("invalid-email");
+
+        Set<ConstraintViolation<CreateStudentDTO>> violations = validator.validate(dto);
+        assertFalse(violations.isEmpty());
     }
 
     @Test
-    void ageBelow16ShouldFail() {
-        CreateStudentDTO dto = createValid();
+    void shouldFailWhenAgeIsTooYoung() {
+        CreateStudentDTO dto = createValidDTO();
         dto.setAge(15);
-        assertFalse(validator.validate(dto).isEmpty());
+
+        Set<ConstraintViolation<CreateStudentDTO>> violations = validator.validate(dto);
+        assertFalse(violations.isEmpty());
     }
 
-    private CreateStudentDTO createValid() {
+    private CreateStudentDTO createValidDTO() {
         CreateStudentDTO dto = new CreateStudentDTO();
         dto.setFirstName("Игорь");
         dto.setLastName("Иванов");
-        dto.setEmail("igor@test.com");
+        dto.setEmail("igor@example.com");
         dto.setAge(20);
         return dto;
     }

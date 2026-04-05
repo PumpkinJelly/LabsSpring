@@ -4,15 +4,26 @@ import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Document(collection = "users")
 @Data
 public class User {
+
     @Id
     private String id;
+
     private String username;
     private String email;
     private String password;
     private List<String> roles;
+
+    // Новые поля для верификации по email
+    private boolean verified = false;                    // Подтверждён ли email
+    private String verificationCode;                     // 6-значный код
+    private LocalDateTime verificationCodeExpiry;        // Время жизни кода
+
+    // Конструктор по умолчанию
+    public User() {}
 }

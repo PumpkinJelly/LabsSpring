@@ -16,6 +16,11 @@ public class AuthController {
         return authService.register(req);
     }
 
+    @PostMapping("/verify-code")
+    public ResponseEntity<?> verifyCode(@RequestBody VerifyCodeRequest req) {
+        return authService.verifyCode(req);
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
         return authService.login(req);

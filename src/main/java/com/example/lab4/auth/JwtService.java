@@ -4,12 +4,11 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Date;
+import java.util.List;
 
 @Service
 public class JwtService {
-
 
     private final String secretKey = "mySuperSecretKeyForJWT2025VeryLongAndSecureKey1234567890ABCDEF";
 
