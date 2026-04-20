@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: lab4_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 454630
+      POSTGRES_DB: student_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lab4_network
+
+  # MongoDB
+  mongodb:
+    image: mongo:latest
+    container_name: lab4_mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: studentdb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/studentdb --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lab4_network
+
+  # Spring Boot Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lab4_app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/student_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: 454630
+      SPRING_DATA_MONGODB_URI: mongodb://admin:admin123@mongodb:27017/studentdb?authSource=admin
+      JWT_SECRET: mySuperSecretKeyForJWT2025VeryLongAndSecureKey1234567890ABCDEF
+      JWT_EXPIRATION: 86400000
+      SPRING_MAIL_HOST: smtp.gmail.com
+      SPRING_MAIL_PORT: 587
+      SPRING_MAIL_USERNAME: klim.fomin2005@gmail.com
+      SPRING_MAIL_PASSWORD: qqsc gnqp dpno nniz
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_TRUST: smtp.gmail.com
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_PROTOCOLS: TLSv1.2
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_CONNECTIONTIMEOUT: 10000
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_TIMEOUT: 10000
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_WRITETIMEOUT: 10000
+      # Actuator for Health Check
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: "always"
+    ports:
+      - "8080:8080"
+    networks:
+      - lab4_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+  mongodb_data:
+
+networks:
+  lab4_network:
+    driver: bridge

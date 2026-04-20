@@ -1,5 +1,7 @@
 package com.example.lab4.auth;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -7,6 +9,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class EmailService {
+
+    private static final Logger log = LoggerFactory.getLogger(EmailService.class);
 
     private final JavaMailSender mailSender;
 
@@ -31,16 +35,10 @@ public class EmailService {
 
             mailSender.send(message);
 
-            System.out.println("✅ Письмо успешно отправлено на " + toEmail);
-            System.out.println("Код: " + code);
+            log.info("✅ Verification code successfully sent to: {}", toEmail);
 
         } catch (Exception e) {
-            System.err.println("❌ ОШИБКА при отправке email на " + toEmail);
-            System.err.println("Тип ошибки: " + e.getClass().getSimpleName());
-            System.err.println("Сообщение: " + e.getMessage());
-            e.printStackTrace();   // ← пока оставь, чтобы видеть полный стек
-
-            // Важно: пробрасываем ошибку дальше, чтобы регистрация не прошла "успешно"
+            log.error("❌ Failed to send verification code to: {}", toEmail, e);
             throw new RuntimeException("Не удалось отправить код подтверждения на почту", e);
         }
     }

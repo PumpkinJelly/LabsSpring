@@ -1,0 +1,185 @@
+📦 ПРОЕКТ СТРУКТУРА ПОСЛЕ DOCKER РАЗВЕРТЫВАНИЯ
+═══════════════════════════════════════════════════════════════════════
+
+lab4/
+│
+├── 📄 Dockerfile                              [НОВОЕ - Multi-stage build]
+│   ├─ Builder stage: Gradle компиляция
+│   ├─ Runtime stage: Eclipse Temurin JRE 17
+│   ├─ HEALTHCHECK на /actuator/health
+│   └─ ENTRYPOINT с --spring.profiles.active=docker
+│
+├── 📄 docker-compose.yml                      [НОВОЕ - Орхестрация сервисов]
+│   ├─ postgresql:16-alpine
+│   │  ├─ Port: 5432
+│   │  ├─ Database: student_db
+│   │  └─ HEALTHCHECK: pg_isready
+│   ├─ mongodb:7.0-alpine
+│   │  ├─ Port: 27017
+│   │  ├─ Database: studentdb
+│   │  └─ HEALTHCHECK: mongosh ping
+│   └─ app (Spring Boot)
+│      ├─ Port: 8080
+│      ├─ Health: /actuator/health
+│      └─ Зависит от обеих БД (depends_on with condition: service_healthy)
+│
+├── 📄 .dockerignore                           [НОВОЕ - Оптимизация сборки]
+│   └─ Исключает: build/, .gradle/, .git/, logs/, etc.
+│
+├── 📄 build.gradle                            [ИЗМЕНЕН - +1 зависимость]
+│   └─ + implementation 'org.springframework.boot:spring-boot-starter-actuator'
+│
+├── 📂 src/main/resources/
+│   ├── 📄 application.properties               [БЕЗ ИЗМЕНЕНИЙ - локальный профиль]
+│   ├── 📄 application-docker.properties       [НОВОЕ - Docker профиль]
+│   │   ├─ Переменные окружения с fallback значениями
+│   │   ├─ Management endpoints включены
+│   │   └─ Health check настроен
+│   └── ... (остальное без изменений)
+│
+├── 📄 DOCKER.md                               [НОВОЕ - Полная документация]
+│   ├─ Инструкции по запуску
+│   ├─ Health check endpoints
+│   ├─ Переменные окружения
+│   └─ Примеры использования
+│
+├── 📄 docker-helper.sh                        [НОВОЕ - Bash скрипт помощник]
+│   └─ Команды: start, stop, logs, health, ps, clean
+│
+├── 📄 docker-helper.bat                       [НОВОЕ - Batch скрипт помощник]
+│   └─ Команды: start, stop, logs, health, ps, clean
+│
+├── 📄 DEPLOYMENT_READY.txt                    [НОВОЕ - Краткое резюме]
+│   └─ Быстрый старт и шпаргалка
+│
+└── ... (все остальные файлы без изменений)
+
+═══════════════════════════════════════════════════════════════════════
+
+🔄 FLOW ДИАГРАММА: ЧТО ПРОИСХОДИТ ПРИ ЗАПУСКЕ
+
+$ docker-compose up --build
+
+  ┌─────────────────────────────┐
+  │  docker-compose.yml         │
+  │  Читает конфигурацию        │
+  └──────────────┬──────────────┘
+                 │
+       ┌─────────┼─────────┐
+       │         │         │
+       ▼         ▼         ▼
+   
+  Build      PostgreSQL   MongoDB
+  Docker     Container    Container
+  Image      (порт 5432)  (порт 27017)
+    │           │            │
+    │           ▼            ▼
+    │        HEALTHCHECK   HEALTHCHECK
+    │        pg_isready    mongosh ping
+    │           │            │
+    │           ▼            ▼
+    │        ✅ Ready      ✅ Ready
+    │           │            │
+    └───────┬───┘            │
+            │                │
+            ▼                │
+    Spring Boot App     Зависит от ▲
+    (порт 8080)        обеих сервисов
+            │
+            ▼
+       Читает env vars:
+       SPRING_DATASOURCE_URL
+       SPRING_DATA_MONGODB_URI
+       JWT_SECRET
+       SPRING_MAIL_*
+            │
+            ▼
+       application-docker.properties
+            │
+            ▼
+       Spring Boot запускается
+            │
+            ▼
+       HEALTHCHECK сработает:
+       curl http://localhost:8080/actuator/health
+            │
+            ▼
+       ✅ Container HEALTHY
+
+═══════════════════════════════════════════════════════════════════════
+
+🎯 HEALTH CHECK: ДВА СПОСОБА
+
+1️⃣  Docker Native HEALTHCHECK
+    
+    Location: Dockerfile (строка ~24)
+    Command: curl -f http://localhost:8080/actuator/health
+    Interval: 30 секунд
+    Retries: 3
+    Start period: 40 секунд
+    Status: Видно в "docker ps" колонка STATUS
+    
+    Показывает: (healthy|unhealthy)
+
+2️⃣  Spring Actuator Endpoints
+    
+    Location: application-docker.properties
+    Endpoints: 
+      - /actuator/health           (основной)
+      - /actuator/health/liveness  (работает ли контейнер?)
+      - /actuator/health/readiness (готово принимать трафик?)
+      - /actuator/info             (информация о приложении)
+    
+    Используется: Kubernetes, Load Balancers, Orchestration tools
+
+═══════════════════════════════════════════════════════════════════════
+
+💾 ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ (из docker-compose.yml)
+
+PostgreSQL:
+  POSTGRES_USER=postgres
+  POSTGRES_PASSWORD=454630
+  POSTGRES_DB=student_db
+
+MongoDB:
+  MONGO_INITDB_ROOT_USERNAME=admin
+  MONGO_INITDB_ROOT_PASSWORD=admin123
+
+Spring Boot (из application-docker.properties):
+  SPRING_DATASOURCE_URL
+  SPRING_DATASOURCE_USERNAME
+  SPRING_DATASOURCE_PASSWORD
+  SPRING_DATA_MONGODB_URI
+  JWT_SECRET
+  SPRING_MAIL_*
+
+═══════════════════════════════════════════════════════════════════════
+
+✅ ЧЕК-ЛИСТ: ЧТО МОЖЕТ НАРУШИТЬСЯ И КАК ИЗБЕЖАТЬ
+
+☑️  Все существующие файлы на месте
+☑️  application.properties НЕ ИЗМЕНЕН
+☑️  Java код НЕ ИЗМЕНЕН
+☑️  Только добавлена одна зависимость (actuator - очень легкая)
+☑️  Приложение работает локально И в Docker
+☑️  Используется Spring profile для переключения конфигурации
+☑️  Docker-compose настроен на зависимости между сервисами
+☑️  Health checks работают на всех уровнях
+
+═══════════════════════════════════════════════════════════════════════
+
+🚀 КОМАНДЫ ДЛЯ БЫСТРОГО СТАРТА
+
+# Запуск
+docker-compose up --build
+
+# Проверка здоровья
+curl http://localhost:8080/actuator/health
+
+# Логи приложения
+docker-compose logs -f app
+
+# Остановка
+docker-compose down
+
+═══════════════════════════════════════════════════════════════════════

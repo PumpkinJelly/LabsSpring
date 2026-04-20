@@ -18,6 +18,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                                .requestMatchers("/actuator/**").permitAll()  // Health Check для Docker
                                 .requestMatchers("/auth/**").permitAll()
                                 .requestMatchers("/students", "/students/**").permitAll()  // пока всем разрешаем
                         //.requestMatchers("/students/**").authenticated()  // раскомментировать позже
