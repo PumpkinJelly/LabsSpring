@@ -35,10 +35,10 @@ public class EmailService {
 
             mailSender.send(message);
 
-            log.info("✅ Verification code successfully sent to: {}", toEmail);
+            log.info("Verification code successfully sent to: {}", toEmail);
 
         } catch (Exception e) {
-            log.error("❌ Failed to send verification code to: {}", toEmail, e);
+            log.error(" Failed to send verification code to: {}", toEmail, e);
             throw new RuntimeException("Не удалось отправить код подтверждения на почту", e);
         }
     }

@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+<div class="max-w-6xl mx-auto p-4">
+
+    <h1 class="text-3xl font-bold text-center my-8">Student Manager</h1>
+
+    <div id="authPanel" class="bg-white rounded-2xl shadow p-6">
+        <div id="registerStep">
+            <input id="regEmail" type="email" placeholder="Email" class="w-full p-4 border rounded-xl mb-3">
+            <input id="regPassword" type="password" placeholder="Пароль" class="w-full p-4 border rounded-xl mb-4">
+            <button onclick="register()" class="w-full bg-indigo-600 text-white py-4 rounded-xl">Зарегистрироваться</button>
+        </div>
+
+        <div id="verifyStep" class="hidden">
+            <p class="text-center mb-4">Код отправлен на <b id="emailShow"></b></p>
+            <input id="verifyCode" maxlength="6" placeholder="000000" class="w-full p-4 border rounded-xl text-center text-2xl mb-4">
+            <button onclick="verifyCode()" class="w-full bg-green-600 text-white py-4 rounded-xl">Подтвердить</button>
+        </div>
+
+        <div id="loginStep" class="hidden">
+            <input id="loginEmail" type="email" placeholder="Email" class="w-full p-4 border rounded-xl mb-3">
+            <input id="loginPassword" type="password" placeholder="Пароль" class="w-full p-4 border rounded-xl mb-4">
+            <button onclick="login()" class="w-full bg-indigo-600 text-white py-4 rounded-xl">Войти</button>
+        </div>
+
+        <p class="text-center mt-4">
+            <button onclick="toggleMode()" id="toggleBtn" class="text-indigo-600">Уже есть аккаунт? Войти</button>
+        </p>
+    </div>
+
+    <div id="studentsPanel" class="hidden">
+        <div class="bg-white rounded-2xl shadow p-6">
+            <div class="flex justify-between mb-6">
+                <h2 class="text-2xl font-semibold">Студенты</h2>
+                <button onclick="newStudent()" class="bg-indigo-600 text-white px-5 py-2.5 rounded-xl">+ Добавить</button>
+            </div>
+            <div id="studentsList"></div>
+        </div>
+    </div>
+</div>
+
+<div id="studentModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-2xl w-full max-w-md">
+        <h3 id="modalTitle" class="font-bold text-xl mb-4">Новый студент</h3>
+        <input type="hidden" id="editId">
+        <input id="firstName" placeholder="Имя" class="w-full p-3 border rounded-xl mb-3">
+        <input id="lastName" placeholder="Фамилия" class="w-full p-3 border rounded-xl mb-3">
+        <input id="email" placeholder="Email" class="w-full p-3 border rounded-xl mb-3">
+        <input id="age" type="number" placeholder="Возраст" class="w-full p-3 border rounded-xl mb-6">
+
+        <div class="flex gap-3">
+            <button onclick="closeStudentModal()" class="flex-1 py-3 border rounded-xl">Отмена</button>
+            <button onclick="saveStudent()" class="flex-1 py-3 bg-indigo-600 text-white rounded-xl">Сохранить</button>
+        </div>
+    </div>
+</div>
+
+<div id="gradesModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-2xl w-full max-w-lg">
+        <h3 class="font-bold text-xl mb-4">Оценки студента: <span id="studentNameDisplay"></span></h3>
+        <input type="hidden" id="currentStudentId">
+
+        <div class="mb-4 flex gap-2">
+            <input id="subjectName" placeholder="Предмет" class="flex-1 p-2 border rounded-lg">
+            <input id="scoreValue" type="number" min="2" max="5" placeholder="Оценка" class="w-24 p-2 border rounded-lg">
+            <button onclick="addGrade()" class="bg-green-600 text-white px-4 rounded-lg">+ Добавить</button>
+        </div>
+
+
+        <div id="gradesList" class="max-h-96 overflow-y-auto"></div>
+
+        <div class="flex gap-3 mt-4">
+            <button onclick="closeGradesModal()" class="flex-1 py-3 border rounded-xl">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API = '';
+    let token = localStorage.getItem('token');
+    let isLogin = false;
+
+    function handleAuthError(response) {
+        if (response.status === 401 || response.status === 403) {
+            localStorage.removeItem('token');
+            alert('Сессия истекла. Пожалуйста, войдите снова.');
+            window.location.reload();
+            return true;
+        }
+        return false;
+    }
+
+    function toggleMode() {
+        isLogin = !isLogin;
+        document.getElementById('registerStep').classList.toggle('hidden', isLogin);
+        document.getElementById('loginStep').classList.toggle('hidden', !isLogin);
+        document.getElementById('toggleBtn').textContent = isLogin ?
+            'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти';
+    }
+
+    async function register() {
+        const email = document.getElementById('regEmail').value;
+        const password = document.getElementById('regPassword').value;
+
+        const res = await fetch(API + '/auth/register', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: "user", email, password})
+        });
+
+        if (res.ok) {
+            document.getElementById('emailShow').textContent = email;
+            document.getElementById('registerStep').classList.add('hidden');
+            document.getElementById('verifyStep').classList.remove('hidden');
+        } else {
+            alert('Ошибка регистрации');
+        }
+    }
+
+    async function verifyCode() {
+        const res = await fetch(API + '/auth/verify-code', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                email: document.getElementById('emailShow').textContent,
+                code: document.getElementById('verifyCode').value
+            })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            token = data.token;
+            localStorage.setItem('token', token);
+            showStudents();
+        } else {
+            alert('Неверный код');
+        }
+    }
+
+    async function login() {
+        const res = await fetch(API + '/auth/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginPassword').value
+            })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            token = data.token;
+            localStorage.setItem('token', token);
+            showStudents();
+        } else {
+            alert('Ошибка входа');
+        }
+    }
+
+    function showStudents() {
+        document.getElementById('authPanel').classList.add('hidden');
+        document.getElementById('studentsPanel').classList.remove('hidden');
+        loadStudents();
+    }
+
+    async function loadStudents() {
+        if (!token) return;
+
+        const res = await fetch(API + '/students?page=0&size=30', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (handleAuthError(res)) return;
+
+        if (res.ok) {
+            const data = await res.json();
+            const list = document.getElementById('studentsList');
+            if (data.content && data.content.length > 0) {
+                list.innerHTML = data.content.map(s => `
+                    <div class="bg-gray-50 p-4 rounded-xl mb-3">
+                        <div class="flex justify-between">
+                            <div>
+                                <b>${s.firstName} ${s.lastName}</b><br>
+                                <small>${s.email} — ${s.age} лет</small>
+                            </div>
+                            <div>
+                                <button onclick="showGrades(${s.id}, '${s.firstName} ${s.lastName}')" class="mr-2 text-green-600">Оценки</button>
+                                <button onclick="editStudent(${s.id})" class="mr-2 text-blue-600">✏</button>
+                                <button onclick="deleteStudent(${s.id})" class="text-red-600">🗑</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                list.innerHTML = '<p class="text-gray-500 text-center py-4">Нет студентов. Добавьте первого!</p>';
+            }
+        }
+    }
+
+    async function showGrades(studentId, studentName) {
+        if (!token) return;
+
+        document.getElementById('currentStudentId').value = studentId;
+        document.getElementById('studentNameDisplay').textContent = studentName;
+        document.getElementById('gradesModal').classList.remove('hidden');
+
+        await refreshGradesList(studentId);
+    }
+
+    async function refreshGradesList(studentId) {
+        const res = await fetch(`${API}/students/${studentId}/grades`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (handleAuthError(res)) return;
+
+        if (res.ok) {
+            const grades = await res.json();
+            const gradesList = document.getElementById('gradesList');
+
+            if (!grades || grades.length === 0) {
+                gradesList.innerHTML = '<p class="text-gray-500 text-center py-4">Нет оценок</p>';
+            } else {
+                gradesList.innerHTML = grades.map(g => `
+                    <div class="border-b py-2 flex justify-between items-center">
+                        <div>
+                            <span class="font-semibold">${g.subject}</span>:
+                            <span class="text-lg font-bold ${g.score >= 4 ? 'text-green-600' : g.score === 3 ? 'text-yellow-600' : 'text-red-600'}">${g.score}</span>
+                            ${g.comment ? `<br><small class="text-gray-500">${g.comment}</small>` : ''}
+                        </div>
+                        <button onclick="deleteGrade(${g.id})" class="text-red-600">🗑</button>
+                    </div>
+                `).join('');
+            }
+        }
+    }
+
+    async function addGrade() {
+        const studentId = document.getElementById('currentStudentId').value;
+        const subject = document.getElementById('subjectName').value;
+        const score = document.getElementById('scoreValue').value;
+
+        if (!subject || !score) {
+            alert('Заполните предмет и оценку');
+            return;
+        }
+
+        const grade = {
+            subject: subject,
+            score: parseInt(score),
+            comment: ""
+        };
+
+        const res = await fetch(`${API}/students/${studentId}/grades`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(grade)
+        });
+
+        if (handleAuthError(res)) return;
+
+        if (res.ok) {
+            document.getElementById('subjectName').value = '';
+            document.getElementById('scoreValue').value = '';
+
+            await refreshGradesList(studentId);
+        } else {
+            alert('Ошибка добавления оценки');
+        }
+    }
+
+    async function deleteGrade(gradeId) {
+        if (!confirm('Удалить оценку?')) return;
+
+        const studentId = document.getElementById('currentStudentId').value;
+
+        const res = await fetch(`${API}/students/${studentId}/grades/${gradeId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (handleAuthError(res)) return;
+
+        if (res.ok) {
+            await refreshGradesList(studentId);
+        } else {
+            alert('Ошибка удаления оценки');
+        }
+    }
+
+    function closeGradesModal() {
+        document.getElementById('gradesModal').classList.add('hidden');
+    }
+
+    function newStudent() {
+        document.getElementById('modalTitle').textContent = 'Новый студент';
+        document.getElementById('editId').value = '';
+        document.getElementById('firstName').value = '';
+        document.getElementById('lastName').value = '';
+        document.getElementById('email').value = '';
+        document.getElementById('age').value = '';
+        document.getElementById('studentModal').classList.remove('hidden');
+    }
+
+    async function saveStudent() {
+        const id = document.getElementById('editId').value;
+        const student = {
+            firstName: document.getElementById('firstName').value,
+            lastName: document.getElementById('lastName').value,
+            email: document.getElementById('email').value,
+            age: parseInt(document.getElementById('age').value)
+        };
+
+        const url = id ? `${API}/students/${id}` : `${API}/students`;
+        const method = id ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(student)
+        });
+
+        if (handleAuthError(res)) return;
+
+        if (res.ok) {
+            closeStudentModal();
+            await loadStudents();
+        } else {
+            alert('Ошибка сохранения студента');
+        }
+    }
+
+    async function editStudent(id) {
+        const res = await fetch(`${API}/students/${id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (handleAuthError(res)) return;
+
+        if (res.ok) {
+            const s = await res.json();
+            document.getElementById('modalTitle').textContent = 'Редактировать студента';
+            document.getElementById('editId').value = s.id;
+            document.getElementById('firstName').value = s.firstName;
+            document.getElementById('lastName').value = s.lastName;
+            document.getElementById('email').value = s.email;
+            document.getElementById('age').value = s.age;
+            document.getElementById('studentModal').classList.remove('hidden');
+        }
+    }
+
+    async function deleteStudent(id) {
+        if (confirm('Удалить студента? Все его оценки также будут удалены!')) {
+            const res = await fetch(`${API}/students/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (handleAuthError(res)) return;
+
+            if (res.ok) {
+                await loadStudents();
+            } else {
+                alert('Ошибка удаления студента');
+            }
+        }
+    }
+
+    function closeStudentModal() {
+        document.getElementById('studentModal').classList.add('hidden');
+    }
+
+    if (token) {
+        fetch(API + '/students?page=0&size=1', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        }).then(res => {
+            if (res.status === 401) {
+                localStorage.removeItem('token');
+                window.location.reload();
+            } else {
+                showStudents();
+            }
+        }).catch(() => {
+            showStudents();
+        });
+    }
+</script>
+</body>
+</html>

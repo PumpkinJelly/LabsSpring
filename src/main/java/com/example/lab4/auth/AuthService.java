@@ -22,7 +22,6 @@ public class AuthService {
     @Autowired private EmailService emailService;
     @Autowired private VerificationCodeService verificationCodeService;
 
-    // 1. Регистрация + отправка кода
     public ResponseEntity<?> register(RegisterRequest req) {
         log.info("Registration request received for email: {}", req.getEmail());
 
@@ -38,14 +37,12 @@ public class AuthService {
         user.setRoles(List.of("USER"));
         user.setVerified(false);
 
-        // Генерируем и сохраняем код
         String code = verificationCodeService.generateCode();
         user.setVerificationCode(code);
         user.setVerificationCodeExpiry(LocalDateTime.now().plusMinutes(10));
 
         userRepository.save(user);
 
-        // Отправляем код на почту
         emailService.sendVerificationCode(req.getEmail(), code);
 
         log.info("User successfully registered: {}. Verification code sent.", req.getEmail());
@@ -56,7 +53,6 @@ public class AuthService {
         ));
     }
 
-    // 2. Подтверждение кода
     public ResponseEntity<?> verifyCode(VerifyCodeRequest req) {
         log.info("Code verification attempt for email: {}", req.getEmail());
 
@@ -78,7 +74,6 @@ public class AuthService {
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid code"));
         }
 
-        // Успешная верификация
         user.setVerified(true);
         user.setVerificationCode(null);
         user.setVerificationCodeExpiry(null);
@@ -91,7 +86,6 @@ public class AuthService {
         return ResponseEntity.ok(new AuthResponse(token));
     }
 
-    // 3. Обычный логин
     public ResponseEntity<?> login(LoginRequest req) {
         log.info("Login attempt for email: {}", req.getEmail());
 

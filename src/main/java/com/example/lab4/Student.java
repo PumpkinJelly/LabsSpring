@@ -1,14 +1,18 @@
-// Student.java (обновлённый)
 package com.example.lab4;
 
+import com.example.lab4.grade.Grade;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "students")
 @Data
 public class Student {
+    @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Grade> grades = new ArrayList<>();
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

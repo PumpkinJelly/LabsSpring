@@ -19,11 +19,9 @@ public class User {
     private String password;
     private List<String> roles;
 
-    // Новые поля для верификации по email
-    private boolean verified = false;                    // Подтверждён ли email
-    private String verificationCode;                     // 6-значный код
-    private LocalDateTime verificationCodeExpiry;        // Время жизни кода
+    private boolean verified = false;
+    private String verificationCode;
+    private LocalDateTime verificationCodeExpiry;
 
-    // Конструктор по умолчанию
     public User() {}
 }

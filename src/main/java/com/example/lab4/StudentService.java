@@ -40,7 +40,6 @@ public class StudentService {
                 .collect(Collectors.toList());
     }
 
-    // Новый метод для пагинации
     public Page<StudentResponseDTO> findAllPaginated(Pageable pageable) {
         return repository.findAll(pageable)
                 .map(this::toResponseDTO);

@@ -29,30 +29,41 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String header = request.getHeader("Authorization");
 
-        if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
+        if (header == null || !header.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-            try {
-                String email = jwtService.getEmailFromToken(token);
+        String token = header.substring(7);
 
-                // Находим пользователя в MongoDB
-                User user = userRepository.findByEmail(email)
-                        .orElseThrow(() -> new RuntimeException("User not found"));
+        try {
+            String email = jwtService.getEmailFromToken(token);
 
-                // Создаём аутентификацию
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                user.getEmail(),
-                                null,
-                                Collections.emptyList()   // пока без ролей
-                        );
+            User user = userRepository.findByEmail(email).orElse(null);
 
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-
-            } catch (Exception e) {
-                // Если токен плохой — просто продолжаем без аутентификации
-                System.out.println("Invalid JWT token: " + e.getMessage());
+            if (user == null) {
+                System.out.println("Invalid JWT token: User not found for email: " + email);
+                filterChain.doFilter(request, response);
+                return;
             }
+
+            if (!user.isVerified()) {
+                System.out.println("User is not verified: " + email);
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            user.getEmail(),
+                            null,
+                            Collections.emptyList()
+                    );
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        } catch (Exception e) {
+            System.out.println("Invalid JWT token: " + e.getMessage());
         }
 
         filterChain.doFilter(request, response);
